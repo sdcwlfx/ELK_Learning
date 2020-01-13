@@ -1,0 +1,164 @@
+
+基础入门：
+	
+	创建自己的仪表盘
+		1.加载数据集到ES
+		2.定义索引模式，连接ES
+		3.探索数据
+		4.可视化数据
+		5.将可视化添加到仪表盘
+	
+	
+	1.加载数据集
+		包含三个数据集：莎士比亚全集数据、随机虚拟账户数据、随机生成的日志数据
+		
+		下载数据集：
+			进入要存储的目录，执行命令：
+				curl -O https://download.elastic.co/demos/kibana/gettingstarted/8.x/shakespeare.json
+				curl -O https://download.elastic.co/demos/kibana/gettingstarted/8.x/accounts.zip
+				curl -O https://download.elastic.co/demos/kibana/gettingstarted/8.x/logs.jsonl.gz
+
+		解压：
+			unzip accounts.zip
+			gunzip logs.jsonl.gz
+			
+		
+		莎士比亚数据集映射：
+		curl -H "Content-Type:application/json" -XPUT 'http://localhost:9200/shakespeare?pretty' -d '
+		{
+			"mappings":{
+				"properties":{
+					"speaker":{"type":"keyword"},  #不可分词
+					"play_name":{"type":"keyword"}, #不可分词
+					"line_id":{"type":"integer"},
+					"speech_number":{"type":"integer"}
+				}
+			}
+		}'
+
+		日志数据集映射(geo_point类型标记经纬度地理位置字段)：
+		curl -H "Content-Type:application/json" -XPUT 'http://localhost:9200/logstash-2015.05.18?pretty' -d '
+		{
+			"mappings":{
+				"properties":{
+					"geo":{
+						"properties":{
+							"coordinates":{
+								"type":"geo_point"
+							}
+						}	
+					}
+				}
+			}
+		}'
+
+		curl -H "Content-Type:application/json" -XPUT 'http://localhost:9200/logstash-2015.05.19?pretty' -d '
+		{
+			"mappings":{
+				"properties":{
+					"geo":{
+						"properties":{
+							"coordinates":{
+								"type":"geo_point"
+							}
+						}
+					}
+				}		
+			}
+		}'
+
+		curl -H "Content-Type:application/json" -XPUT 'http://localhost:9200/logstash-2015.05.20?pretty' -d '
+		{
+			"mappings":{
+				"properties":{
+					"geo":{
+						"properties":{
+							"coordinates":{
+								"type":"geo_point"
+							}
+						}
+					}
+				}
+			}
+		}'
+
+		加载三个数据集：
+			进入示例数据所在的目录，执行以下命令：
+			curl -H "Content-Type: application/x-ndjson" -XPOST 'http://localhost:9200/bank/account/_bulk?pretty' --data-binary @accounts.json
+			curl -H "Content-Type: application/x-ndjson" -XPOST 'http://localhost:9200/shakespeare/_doc/_bulk?pretty' --data-binary @shakespeare.json
+			curl -H 'Content-Type: application/x-ndjson' -XPOST 'http://localhost:9200/_bulk?pretty' --data-binary @logs.jsonl
+		验证加载是否成功：
+			curl -H "Content-Type:application/json" -XGET 'http://localhost:9200/_cat/indices?pretty&v'
+	
+	
+	2.定义索引模式
+		定义索引模式时，匹配该模式的索引必须在 Elasticsearch 中存在。并且那些索引必须包含数据。
+		
+		检查可获得的索引：
+			Dev Tools->Console:GET _cat/indices
+		
+		索引模式告诉Kibana想要探索的ES索引，可以使用通配符(*)匹配多个索引(按索引名匹配)。
+		
+		2.1 创建索引模式
+			为不含时间序列数据的数据集shakespeare创建索引模式shake*，及包含bank数据集的索引模式ba*
+			创建包含时间序列数据(Logstash中含时间数据)的索引模式
+			
+			
+
+
+
+发现(Discover)
+	1.访问和索引模式匹配的每个文档
+	2.查询数据(KQL或Lucene查询语法)、过滤查询结果(可以通过时间对基于时间的索引进行过滤、或者通过域进行过滤)
+	3.获得匹配查询的文档结果字段(域)级别的细节
+	4.查看指定文档(必须是基于时间的索引模式匹配的文档)前后发生的事件(文档上下文)-->如对数据进行故障排除，已经将范围缩小到单一文档，可展开文档，点击View surrounding documents，默认输出事件发生后前后发生的5个文档
+
+	
+	创建索引模式
+		1.标准索引模式：通过匹配索引名字创建，可以包含系统索引，索引模式名字必须唯一，可以使用通配符匹配多个索引。
+		  对于包含时间序列的索引，可以选择域通过时间过滤数据，若没有选择域，则不能使用时间过滤器。
+		2.汇总索引模式：若创建索引模式时匹配到一个汇总索引，可以将索引模式仅与汇总数据匹配，亦可将汇总数据与源数据混合可视化，一个索引模式仅能匹配一个汇总索引。
+		3.跨集群搜索索引模式：若ES被设置为跨集群搜索，可以创建一个索引模式搜索选择的集群。使用<cluster-names>:<pattern>形式创建索引模式。
+		  如为了跨集群cluster_one和cluster_two创建索引模式，可用：cluster_one:logstash-*,cluster_two:logstash-* 作为索引模式。其中“,”逗号后不能有空格。
+		  也可以使用通配符匹配集群名字，如：cluster_*:logstash-* 作为索引模式。要匹配所有集群，则使用：*:logstash-* 。
+	
+	查询数据：
+		可以使用KQL或Lucene查询。默认显示前500行查询文档(可在Management->Kibana->Advanced Settings中设置discover:sampleSize)，按时间倒序排列，最新的文件首先显示。
+		KQL查询语言：
+			1.response:200 -->将匹配"response"字段为200的文档
+			2.短语查询 -->若想要查询一个短语，将短语用引号包围，如 message:"Quick brown fox"，含"quick brown fox"的文档将匹配，而含"quick fox brown"的文档不会匹配。若查询语句没有引号，含"quick fox brown"的文档也会匹配。
+			3.布尔分隔符： or、and -->多个查询条件必须以分隔符隔离，以空格隔开的默认使用or分隔符，如response:200 extension:php默认为 response:200 or extension:php,会匹配含有response:200或者extension:php的文档。
+			  而response:200 and extension:php会匹配同时包含这两个字段值的文档。and优先级比or更高。
+			  response:(200 or 404) ->匹配response字段为200或404的文档
+			  tags:(success and info and security) ->匹配tags字段同时有"success、info、security"的文档。
+			  not response:200 ->匹配response字段不为200的文档
+			4.范围查询：bytes>1000 ->匹配bytes字段>1000的文档，有效符号：>,>=,<,<=
+			5.存在查询：response:* ->匹配存在response字段的文档
+			6.通配符查询：response:2* ->匹配该字段以2开头的文档
+		Lucene查询技巧：
+			1.自由文本搜索：直接输入查询字符串，如输入safari,将会搜索所有字段看是否含safari
+			2.指定字段查询：status:200 ->匹配status字段为200的文档
+			3.范围查询：status:[400 TO 499] ->查询status字段为4xx的文档
+			4.布尔查询：and、or、not,如status:[400 TO 499] AND (extension:php OR extension:html) 
+		过滤：
+			1.指定域过滤：可以点击指定域(字段)，带“+”代表查询该字段为该值的文档，“-”代表排除该字段为该值的文档
+			2.条件过滤：点击左侧"add Filter"，可以选择指定域(字段)，并为该域设定过滤条件，点击保存进行过滤。
+			3.修改过滤：对"add Filter"栏已有的过滤条件，点击->Edit Filter->Edit as Query DSL,可以查看完整的DSL语句。
+
+可视化(Visualize)
+    可视化类型：
+		Lens:
+			1.通过拖拉字段的方式快速可视化
+			2.通过每个字段的摘要视图理解数据
+			3.通过选择自动生成的可视化建议，轻松更改可视化类型
+			4.保存可视化文件以在仪表板中使用
+	
+		TSVB：->时间序列数据可视化工具，可以组合无数个聚合来显示复杂数据
+		
+		Timelion:->时间序列数据可视化工具，可以在单个可视化文件中组合完全独立的数据源
+			可用于
+				1.网络流量入站和出站
+				2.系统真正在使用的内存
+				3.将用户空间中所花费的CPU时间的实时百分比与偏移一小时的结果进行比较
+
+

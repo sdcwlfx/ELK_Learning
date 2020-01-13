@@ -23,7 +23,8 @@ RESTful介绍和使用教程   https://blog.csdn.net/x541211190/article/details/
 			2.存有该资源的主机IP地址(有时也包括端口号)
 			3.主机资源的具体地址。如目录和文件名等
 		如：http://localhost:8080/ServletDemo/mydemo3
-		
+
+
 
 ES(7.5版本)：
 	1.ES与Solr对比
@@ -31,23 +32,63 @@ ES(7.5版本)：
 		1.2 Solr支持更多格式数据，而ES仅支持JSON格式
 		1.3 ES在处理实时搜索应用时效率更高，实时性更好，比如新往github中创建一个工程，能马上搜索到，
 			Solr在传统的搜索应用中变现好于ES
-	2.安装
+	2.安装配置(单机运行)
 		2.1 jdk1.8及以上
-		2.2 ES图形化操作界面
-			https://github.com/mobz/elasticsearch-head
-		2.3 解压路径：/home/hadoop/Downloads/elasticsearch-7.5.1
-			配置环境变量：以elasticsearch即可在终端启动服务
+		2.2 ES图形化操作界面(google浏览器插件方式安装head)
+			下载并解压https://github.com/TravisTX/elasticsearch-head-chrome
+			chrome->更多工具->扩展程序->加载已解压扩展程序->选择head插件即可
+			
+			
+			
+			linux安装nodejs:
+				1.https://nodejs.org/en/download/下载64bit linux版本并解压(我的路径:https://nodejs.org/en/download/)
+				2.mv node-v12.14.1-linux-x64 nodejs-v12.14.1  ->重命名
+				3.建立软连接
+					sudo ln -s nodejs-v12.14.1/bin/node /usr/local/bin
+					sudo ln -s nodejs-v12.14.1/bin/npm /usr/local/bin
+				4.查看nodejs版本
+					node -v
+				  若提示：The program 'node' can be found in the following packages:
+							* node
+							* nodejs-legacy
+						执行命令：
+							sudo apt-get install nodejs-legacy
+				
+			
+			
+		2.3 添加用户-->Elatisc默认不支持root用户运行(若此时是root用户)
+				useradd 用户名 
+		2.4 更改目标目录权限(若此时是root用户)
+				chown 用户名:用户名 目标目录/ -R
+			切换用户
+				su - 用户名
+		2.5 解压路径：/home/hadoop/Downloads/elasticsearch-7.5.1
+			配置环境变量：以elasticsearch即可在终端启动服务(可选)
 			vim ~/.bashrc
 			export ES=/home/hadoop/Downloads/elasticsearch-7.5.1
 			export PATH=${ES}/bin:
 			
 			source ~/.bashrc ->使配置立即生效
+		2.6 修改配置
+				1.修改elsticsearch.yml中network.host:0.0.0.0 ->任意网络均可访问
+				2.修改jvm.options  ->network.host地址不是localhost或127.0.0.1时，即认为是生产环境，要求配置更高
+					-Xms1g ->初始堆内存，默认1g ,需要根据虚拟机变化
+					-Xmx1g ->最大堆内存，默认1g
+				3.root权限下修改内存映射最大数量，可以root用户下修改，也可执行sudo命令修改
+					sudo vim /etc/sysctl.conf ,vm.max_map_count=65535
+					sudo sysctl -p ->配置生效
 		
 	3.启动后，默认绑定两个端口，9200->http(浏览器访问)，9300->tcp（使用api对服务器管理的端口），
 	  访问：localhost:9200 返回一个JSON，es服务正常启动。
 	  启动：./bin/elasticsearch
 	  终端访问：curl 'http://localhost:9200/?pretty' 
 	  pretty:为美化json，有参数时，使用&来连接pretty。
+	  
+	  后台启动:
+		./bin/elasticsearch -d
+	  停止:
+		jps ->查看进程
+		kill elastic进程
 	
 	4.集群和节点
 		节点(node)：运行着es的实例
@@ -2826,154 +2867,3 @@ ES(7.5版本)：
 					}
 				}'
 
-			
-				
-
-					
-					
-
-					
-
-					
-
-				
-				
-				
-			
-				
-				
-
-
-			
-				
-				
-				
-				
-				
-				
-			
-				
-				
-				
-				
-				
-				
-
-
-						
-				
-				
-
-					
-					
-					
-
-
-
-					
-					
-
-
-				
-			
-				
-				
-				
-
-				
-				
-			
-				
-				
-			
-				
-				
-				
-			
-
-				
-				
-			
-				
-				
-			
-				
-				
-
-				
-				
-				
-			
-
-				
-
-					
-
-
-					
-				
-
-			
-				
-					
-					
-				
-		
-
-
-			
-				
-
-			
-			
-				
-			
-
-				
-
-				
-			
-				
-			
-				
-
-
-
-
-			
-			
-			
-				
-				
-			
-			
-
-			
-
-				
-				
-
-
-				
-
-			
-
-
-		
-
-
-
-				
-
-
-			
-			
-
-			
-			
-
-
-			
-	
-	
-		
